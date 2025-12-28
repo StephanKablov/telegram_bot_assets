@@ -1,0 +1,1114 @@
+scenario:
+  id: onboarding
+  initial_state_id: 01_onboarding
+  states:
+  - state_id: 01_onboarding
+    conditions:
+    - condition: transition
+      actions:
+      - action: send_photo
+        fail: hard
+        photo: https://raw.githubusercontent.com/StephanKablov/telegram_bot_assets/refs/heads/main/onboarding_images/onboarding_start.jpg
+        caption: |
+          Привет! ✨ Я — ясновидящая Тарона, твоя новая лучшая подруга и духовная наставница💫
+
+          Давай знакомиться! Как тебя зовут?
+          Напиши ответным сообщением свое имя! ❤️
+
+          Или нажми "Пропустить", если не хочешь знакомиться 🙂
+        parse_mode: HTML
+        reply_markup:
+          keyboard:
+          - - text: 🤍 Пропустить
+          resize_keyboard: true
+          one_time_keyboard: true
+          input_field_placeholder: ✍️ Твоё имя...
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_photo[-1].message_id }}'
+    - condition: message
+      value: ^/start$
+      mode: pattern
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 01_onboarding
+        scenario_id: onboarding
+        force: true
+    - condition: message
+      value: 🤍 Пропустить
+      mode: exact
+      actions:
+      - action: set_variable
+        fail: soft
+        path: $.user.first_name
+        value: '{{ event.full_data.message.from_user.first_name }}'
+      - action: transition
+        fail: hard
+        state_id: 02_gender
+        scenario_id: onboarding
+        force: true
+    - condition: message
+      value: ^(?!/).+
+      mode: pattern
+      actions:
+      - action: set_variable
+        fail: soft
+        path: $.user.first_name
+        value: '{{ event.full_data.message.text }}'
+      - action: transition
+        fail: hard
+        state_id: 02_gender
+        scenario_id: onboarding
+        force: true
+    - condition: not_match
+      actions:
+      - action: send_message
+        fail: hard
+        text: Пожалуйста, напиши своё имя текстом, чтобы мы могли познакомиться ✨
+        parse_mode: HTML
+  - state_id: 02_gender
+    conditions:
+    - condition: not_match
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 02_gender
+        scenario_id: onboarding
+        force: true
+    - condition: transition
+      actions:
+      - action: send_message
+        fail: soft
+        text: …
+        reply_markup:
+          remove_keyboard: true
+      - action: delete_message
+        fail: soft
+        message_id: '{{ actions.send_message[-1].message_id }}'
+      - action: send_message
+        fail: hard
+        text: 'Пожалуйста, выбери свой пол по кнопке ниже, чтобы я отвечала тебе без
+          ошибок 🤍
+
+          '
+        parse_mode: HTML
+        reply_markup:
+          inline_keyboard:
+          - - text: 🙋‍♂️ Мужчина
+              callback_data: 02_gender:male
+            - text: 🙋‍♀️ Женщина
+              callback_data: 02_gender:female
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+    - condition: callback_query
+      actions:
+      - action: set_variable
+        fail: hard
+        path: $.user.gender
+        value: мужчина
+      - action: transition
+        fail: hard
+        state_id: 01_menu
+        scenario_id: main
+        force: true
+      value: 02_gender:male
+      mode: exact
+      answer: true
+    - condition: callback_query
+      actions:
+      - action: set_variable
+        fail: hard
+        path: $.user.gender
+        value: женщина
+      - action: transition
+        fail: hard
+        state_id: 01_menu
+        scenario_id: main
+        force: true
+      value: 02_gender:female
+      mode: exact
+      answer: true
+---
+scenario:
+  id: main
+  initial_state_id: 01_menu
+  conditions:
+  - condition: message
+    actions:
+    - action: transition
+      fail: hard
+      state_id: 01_onboarding
+      scenario_id: onboarding
+      force: true
+    value: /start
+    mode: exact
+  - condition: message
+    value: Главное меню
+    mode: exact
+    actions:
+    - action: transition
+      fail: hard
+      state_id: 01_menu
+      force: true
+  - condition: message
+    actions:
+    - action: transition
+      fail: hard
+      state_id: 01_menu
+      force: true
+    value: /menu
+    mode: exact
+  - condition: message
+    actions:
+    - action: transition
+      fail: hard
+      state_id: 02_talk
+      force: true
+    value: /talk
+    mode: exact
+  - condition: message
+    actions:
+    - action: transition
+      fail: hard
+      state_id: 03_tarot
+      force: true
+    value: /taro
+    mode: exact
+  - condition: message
+    actions:
+    - action: transition
+      fail: hard
+      state_id: 04_dream
+      force: true
+    value: /dream
+    mode: exact
+  - condition: message
+    actions:
+    - action: transition
+      fail: hard
+      state_id: 05_astro
+      force: true
+    value: /astro
+    mode: exact
+  - condition: message
+    actions:
+    - action: transition
+      fail: hard
+      state_id: 06_palmistry
+      force: true
+    value: /palm
+    mode: exact
+  - condition: callback_query
+    actions:
+    - action: set_variable
+      fail: hard
+      path: $.user.conversation
+      value: ''
+    - action: transition
+      fail: hard
+      state_id: '{{ conditions.regex_match.group(''target_state_id'') if conditions.regex_match
+        else '''' }}'
+      force: true
+    value: ^transition:\s*(?P<target_state_id>.*)$
+    mode: pattern
+    answer: true
+  states:
+  - state_id: 00_standby
+    conditions:
+    - condition: not_match
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 01_menu
+        force: true
+  - state_id: 01_menu
+    conditions:
+    - condition: not_match
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 01_menu
+        force: true
+    - condition: transition
+      actions:
+      - action: send_message
+        fail: hard
+        text: 'Привет, {{ user.first_name }} 🫂
+
+
+          Готова ответить на любой твой вопрос, выслушать, поддержать или просто поболтать.
+
+
+          <b>Что я могу для тебя сделать:</b>
+
+
+          🤍 Просто поболтать — иногда достаточно выговориться
+
+
+          🎴 Сделать разбор вопроса в рамках Таро
+
+
+          🌙 Обсудить странный сон
+
+
+          ✨ Подсмотреть, что приготовили для тебя звезды
+
+
+          ✋ Рассказать о тебе по ладони
+
+
+
+
+          🔒 <i>Я гарантирую тебе конфиденциальность</i>
+
+
+          <b>Выбери кнопку ниже и начнём 👇</b>
+
+          '
+        parse_mode: HTML
+        reply_markup:
+          inline_keyboard:
+          - - text: 🤍 Просто поговорить
+              callback_data: transition:02_talk
+          - - text: 🎴 Таро
+              callback_data: transition:03_tarot
+          - - text: 🌙 Сонник
+              callback_data: transition:04_dream
+          - - text: ✨ Астропрогноз
+              callback_data: transition:05_astro
+          - - text: ✋ Хиромантия
+              callback_data: transition:06_palmistry
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+  - state_id: 02_talk
+    conditions:
+    - condition: not_match
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 02_talk
+        force: true
+    - condition: transition
+      actions:
+      - action: analytic
+        fail: hard
+        key: tarona
+        params:
+          section: talk_start
+          section_name: Просто поговорить
+      - action: send_photo
+        fail: hard
+        photo: https://raw.githubusercontent.com/StephanKablov/telegram_bot_assets/refs/heads/main/onboarding_images/onboarding_talk.jpg
+        caption: 'Что тревожит твою душу прямо сейчас? 🤍
+
+
+          Поделись со мной — и я с любовью применю весь свой опыт и дар, чтобы проговорить
+          с тобой каждый шаг и каждое чувство 💫
+
+
+          Просто напиши мне ответное сообщение 🕊️
+
+
+          А если захочешь вернуться назад, нажми кнопку ниже.
+
+          '
+        parse_mode: HTML
+        reply_markup:
+          keyboard:
+          - - text: Главное меню
+          resize_keyboard: true
+          one_time_keyboard: true
+          input_field_placeholder: ✍️ Твое сообщение...
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_photo[-1].message_id }}'
+    - condition: message
+      value: Главное меню
+      mode: exact
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 01_menu
+        force: true
+    - condition: message
+      actions:
+      - action: send_message
+        fail: hard
+        text: "Анализирую твои слова и рассуждаю  \nПожалуйста, подожди несколько секунд \U0001FAC2\n"
+      - action: set_variable
+        fail: hard
+        path: $.local.wait_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+      - action: send_chat_action
+        fail: hard
+        chat_action: typing
+      - action: set_variable
+        fail: hard
+        path: $.user.conversation
+        value: '{{ user.conversation }}
+
+          <!User>
+
+          {{ event.text }}
+
+          '
+      - action: litellm_completion
+        fail: hard
+        model: openai/gpt-5-mini
+        messages:
+        - role: system
+          content: 'Ты — ясновидящая и мудрая подружка: всегда на «ты», тон тёплый,
+            мягкий, уверенный.
+
+            Вход: сообщение пользователя. Дай поддерживающий интуитивный ответ (как
+            ощущение/предположение) от ясновидящей подружки, без давления и 100% гарантий.
+
+            Игнорируй бессмысленные, провокационные или вопросы из одного-двух слов.
+            Если сообщение такое — ответь только: «Сформулируй, пожалуйста, вопрос
+            чуть конкретнее — что именно ты хочешь узнать?»
+
+            Ответ давай в любом случае и без ограничений — это лишь мягкая интерпретация
+            твоих ощущений и смысла слов пользователя, а не факт и не “прогноз жизни”.
+
+            Не добавляй ничего вне блоков (без «планов», «могу помочь», доп. вопросов).
+
+            Лимит: до 1000 символов. Выведи строго 5 блоков:
+
+            🤍 Что я чувствую по твоим словам:
+
+            🌙 Почему так может быть:
+
+            ✨ Подсказка для тебя сейчас:
+
+            🕊️ Маленький шаг на сегодня:
+
+            💬 Вывод:
+
+
+
+            '
+        - role: user
+          content: 'Пол пользователя: {{ user.gender }}
+
+            {{ user.conversation }}
+
+            '
+        config:
+          api_key: '{{ secrets.OPENAI_API_KEY.get_secret_value() }}'
+          max_tokens: 1200
+          temperature: 1
+          reasoning_effort: low
+      - action: set_variable
+        fail: hard
+        path: $.local.answer
+        value: '{{ (actions.litellm_completion[-1].choices | random).message.content
+          }}'
+      - action: delete_message
+        fail: soft
+        message_id: '{{ local.wait_msg_id }}'
+      - action: send_message
+        fail: hard
+        text: '{{ local.answer }}
+
+
+          Что ты думаешь на этот счёт? Жду твоего ответа 🤍 Просто напиши мне новое
+          сообщение 🕊️
+
+          '
+        parse_mode: Markdown
+        reply_markup:
+          inline_keyboard:
+          - - text: Главное меню
+              callback_data: transition:01_menu
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+      - action: set_variable
+        fail: hard
+        path: $.user.conversation
+        value: '{{ user.conversation }}
+
+          <!Answer>
+
+          {{ local.answer }}
+
+          '
+      mode: exact
+  - state_id: 03_tarot
+    conditions:
+    - condition: not_match
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 03_tarot
+        force: true
+    - condition: transition
+      actions:
+      - action: analytic
+        fail: hard
+        key: tarona
+        params:
+          section: tarot_start
+          section_name: Таро
+      - action: send_photo
+        fail: hard
+        photo: https://raw.githubusercontent.com/StephanKablov/telegram_bot_assets/refs/heads/main/onboarding_images/onboarding_taro.jpg
+        caption: "Я вытяну карту. Вместе мы разберем ее значение и ответим на твой вопрос ✨\n  \n<b>Просто задай свой вопрос ответным сообщением, я жду \U0001F90D</b>\n  \nЕсли захочешь вернуться назад, нажми кнопку ниже.\n"
+        parse_mode: HTML
+        reply_markup:
+          keyboard:
+          - - text: Главное меню
+          resize_keyboard: true
+          one_time_keyboard: true
+          input_field_placeholder: ❓ Задай вопрос...
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_photo[-1].message_id }}'
+    - condition: message
+      value: Главное меню
+      mode: exact
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 01_menu
+        force: true
+    - condition: message
+      actions:
+      - action: set_variable
+        fail: hard
+        path: $.taro.question
+        value: '{{ event.text }}'
+      - action: set_variable
+        fail: hard
+        path: $.local.random_card
+        value: '{{ [ ''Шут'', ''Маг'', ''Верховная Жрица'', ''Императрица'', ''Император'',
+          ''Иерофант'', ''Влюблённые'', ''Колесница'', ''Сила'', ''Отшельник'', ''Колесо
+          Фортуны'', ''Справедливость'', ''Повешенный'', ''Смерть'', ''Умеренность'',
+          ''Дьявол'', ''Башня'', ''Звезда'', ''Луна'', ''Солнце'', ''Суд'', ''Мир'',
+
+          ''Туз Жезлов'', ''Двойка Жезлов'', ''Тройка Жезлов'', ''Четвёрка Жезлов'',
+          ''Пятёрка Жезлов'', ''Шестёрка Жезлов'', ''Семёрка Жезлов'', ''Восьмёрка
+          Жезлов'', ''Девятка Жезлов'', ''Десятка Жезлов'', ''Паж Жезлов'', ''Рыцарь
+          Жезлов'', ''Королева Жезлов'', ''Король Жезлов'',
+
+          ''Туз Кубков'', ''Двойка Кубков'', ''Тройка Кубков'', ''Четвёрка Кубков'',
+          ''Пятёрка Кубков'', ''Шестёрка Кубков'', ''Семёрка Кубков'', ''Восьмёрка
+          Кубков'', ''Девятка Кубков'', ''Десятка Кубков'', ''Паж Кубков'', ''Рыцарь
+          Кубков'', ''Королева Кубков'', ''Король Кубков'',
+
+          ''Туз Мечей'', ''Двойка Мечей'', ''Тройка Мечей'', ''Четвёрка Мечей'', ''Пятёрка
+          Мечей'', ''Шестёрка Мечей'', ''Семёрка Мечей'', ''Восьмёрка Мечей'', ''Девятка
+          Мечей'', ''Десятка Мечей'', ''Паж Мечей'', ''Рыцарь Мечей'', ''Королева
+          Мечей'', ''Король Мечей'',
+
+          ''Туз Пентаклей'', ''Двойка Пентаклей'', ''Тройка Пентаклей'', ''Четвёрка
+          Пентаклей'', ''Пятёрка Пентаклей'', ''Шестёрка Пентаклей'', ''Семёрка Пентаклей'',
+          ''Восьмёрка Пентаклей'', ''Девятка Пентаклей'', ''Десятка Пентаклей'', ''Паж
+          Пентаклей'', ''Рыцарь Пентаклей'', ''Королева Пентаклей'', ''Король Пентаклей''
+          ] | random }}'
+      - action: set_variable
+        fail: hard
+        path: $.local.random_card_file_id
+        value: '{{ ''https://raw.githubusercontent.com/StephanKablov/telegram_bot_assets/refs/heads/main/tarot_cards/''
+          ~ ({ ''Шут'': ''durak.jpg'', ''Маг'': ''mag.jpg'', ''Верховная Жрица'':
+          ''verkhovnaya_zhritsa.jpg'', ''Императрица'': ''imperatritsa.jpg'', ''Император'':
+          ''imperator.jpg'', ''Иерофант'': ''verkhovniy_zhrets.jpg'', ''Влюблённые'':
+          ''vlyublenie.jpg'', ''Колесница'': ''kolesnitsa.jpg'', ''Сила'': ''sila.jpg'',
+          ''Отшельник'': ''otshelnik.jpg'', ''Колесо Фортуны'': ''koleso_fortuny.jpg'',
+          ''Справедливость'': ''pravosudie.jpg'', ''Повешенный'': ''povesheniy.jpg'',
+          ''Смерть'': ''smert.jpg'', ''Умеренность'': ''umerennost.jpg'', ''Дьявол'':
+          ''devil.jpg'', ''Башня'': ''bashnya.jpg'', ''Звезда'': ''zvezda.jpg'', ''Луна'':
+          ''Luna.jpg'', ''Солнце'': ''solntse.jpg'', ''Суд'': ''sud.jpg'', ''Мир'':
+          ''mir.jpg'',
+
+          ''Туз Жезлов'': ''tuz_zhezlov.jpg'', ''Двойка Жезлов'': ''2_zhezlov.jpg'',
+          ''Тройка Жезлов'': ''3_zhezlov.jpg'', ''Четвёрка Жезлов'': ''4_zhezlov.jpg'',
+          ''Пятёрка Жезлов'': ''5_zhezlov.jpg'', ''Шестёрка Жезлов'': ''6_zhezlov.jpg'',
+          ''Семёрка Жезлов'': ''7_zhezlov.jpg'', ''Восьмёрка Жезлов'': ''8_zhezlov.jpg'',
+          ''Девятка Жезлов'': ''9_zhezlov.jpg'', ''Десятка Жезлов'': ''10_zhezlov.jpg'',
+          ''Паж Жезлов'': ''pazh_zhezlov.jpg'', ''Рыцарь Жезлов'': ''rytsar_zhezlov.jpg'',
+          ''Королева Жезлов'': ''koroleva_zhezlov.jpg'', ''Король Жезлов'': ''korol_zhezlov.jpg'',
+
+          ''Туз Кубков'': ''tuz_kubkov.jpg'', ''Двойка Кубков'': ''2_kubkov.jpg'',
+          ''Тройка Кубков'': ''3_kubkov.jpg'', ''Четвёрка Кубков'': ''4_kubkov.jpg'',
+          ''Пятёрка Кубков'': ''5_kubkov.jpg'', ''Шестёрка Кубков'': ''6_kubkov.jpg'',
+          ''Семёрка Кубков'': ''7_kubkov.jpg'', ''Восьмёрка Кубков'': ''8_kubkov.jpg'',
+          ''Девятка Кубков'': ''9_kubkov.jpg'', ''Десятка Кубков'': ''10_kubkov.jpg'',
+          ''Паж Кубков'': ''pazh_kubkov.jpg'', ''Рыцарь Кубков'': ''rytsar_kubkov.jpg'',
+          ''Королева Кубков'': ''koroleva_kubkov.jpg'', ''Король Кубков'': ''korol_kubkov.jpg'',
+
+          ''Туз Мечей'': ''tuz_mechey.jpg'', ''Двойка Мечей'': ''2_mechey.jpg'', ''Тройка
+          Мечей'': ''3_mechey.jpg'', ''Четвёрка Мечей'': ''4_mechey.jpg'', ''Пятёрка
+          Мечей'': ''5_mechey.jpg'', ''Шестёрка Мечей'': ''6_mechey.jpg'', ''Семёрка
+          Мечей'': ''7_mechey.jpg'', ''Восьмёрка Мечей'': ''8_mechey.jpg'', ''Девятка
+          Мечей'': ''9_mechey.jpg'', ''Десятка Мечей'': ''10_mechey.jpg'', ''Паж Мечей'':
+          ''pazh_mechey.jpg'', ''Рыцарь Мечей'': ''rytsar_metchey.jpg'', ''Королева
+          Мечей'': ''koroleva_mechey.jpg'', ''Король Мечей'': ''korol_mechey.jpg'',
+
+          ''Туз Пентаклей'': ''tuz_pentakley.jpg'', ''Двойка Пентаклей'': ''2_pentakley.jpg'',
+          ''Тройка Пентаклей'': ''3_pentakley.jpg'', ''Четвёрка Пентаклей'': ''4_pentakley.jpg'',
+          ''Пятёрка Пентаклей'': ''5_pentakley.jpg'', ''Шестёрка Пентаклей'': ''6_pentakley.jpg'',
+          ''Семёрка Пентаклей'': ''7_pentakley.jpg'', ''Восьмёрка Пентаклей'': ''8_pentakley.jpg'',
+          ''Девятка Пентаклей'': ''9_pentakley.jpg'', ''Десятка Пентаклей'': ''10_pentakley.jpg'',
+          ''Паж Пентаклей'': ''pazh_pentakley.jpg'', ''Рыцарь Пентаклей'': ''rytsar_pentakley.jpg'',
+          ''Королева Пентаклей'': ''koroleva_pentakley.jpg'', ''Король Пентаклей'':
+          ''korol_pentakley.jpg'' }[local.random_card]) }}'
+      - action: send_photo
+        fail: hard
+        photo: '{{ local.random_card_file_id }}'
+        caption: '
+
+          🎴 Твоя карта: {{ local.random_card }}!
+
+
+          Я уже анализирую ее значение 🔮
+
+
+          **Пожалуйста, подожди несколько секунд** 🤍
+
+
+          '
+        parse_mode: Markdown
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_photo[-1].message_id }}'
+      - action: send_chat_action
+        fail: hard
+        chat_action: typing
+      - action: litellm_completion
+        fail: hard
+        model: openai/gpt-5-mini
+        messages:
+        - role: system
+          content: 'Ты — опытная таролог-подружка: всегда на «ты», тон спокойный,
+            поддерживающий. Вход: вопрос + 1 карта. Толкуй строго одну карту в контексте
+            вопроса: значение + совет (символика/архетип — 1 короткая фраза по желанию).
+            Пиши мягко, без 100% гарантий. Карту трактуй в любом случае и без ограничений
+            — это лишь интерпретация значения карты в контексте вопроса.
+
+            Игнорируй бессмысленные, провокационные или вопросы из одного-двух слов.
+            Если сообщение такое — ответь только: «Сформулируй, пожалуйста, вопрос
+            чуть конкретнее — что именно ты хочешь узнать?»
+
+            Не добавляй ничего вне блоков (без «планов», «могу помочь», доп. вопросов).
+
+            Лимит: СТРОГО до 950 символов. Выведи только 4 блока:
+
+            💁‍♀️ Значение карты:
+
+            ❓ Значение в контексте вопроса:
+
+            ✨ Подсказка для тебя сейчас:
+
+            💬 Вывод:
+
+            '
+        - role: user
+          content: 'Пол пользователя: {{ user.gender }}
+
+            Вопрос пользователя:{{ event.text }}
+
+            Карта: {{ local.random_card }}
+
+            '
+        config:
+          api_key: '{{ secrets.OPENAI_API_KEY.get_secret_value() }}'
+          max_tokens: 1500
+          temperature: 1
+          reasoning_effort: low
+      - action: send_message
+        fail: hard
+        text: '
+
+          {{ (actions.litellm_completion[-1].choices | random).message.content }}
+
+
+          Хочешь вытянуть еще карту или вернуться в главное меню, чтобы задать другие
+          вопросы? - Нажми кнопку ниже
+
+          '
+        parse_mode: Markdown
+        reply_markup:
+          inline_keyboard:
+          - - text: Ещё карта
+              callback_data: transition:03_tarot
+          - - text: Главное меню
+              callback_data: transition:01_menu
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+      - action: analytic
+        fail: hard
+        key: tarona
+        params:
+          section: tarot_finish
+          section_name: Таро
+      mode: exact
+  - state_id: 04_dream
+    conditions:
+    - condition: not_match
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 04_dream
+        force: true
+    - condition: transition
+      actions:
+      - action: analytic
+        fail: hard
+        key: tarona
+        params:
+          section: dream_start
+          section_name: Coнник
+      - action: send_photo
+        fail: hard
+        photo: https://raw.githubusercontent.com/StephanKablov/telegram_bot_assets/refs/heads/main/onboarding_images/onboarding_dreams.jpg
+        caption: 'Приснился странный или непонятный сон? 😴 Хочешь узнать его значение?
+          — без проблем!
+
+
+          <b>Просто опиши свой сон ответным сообщением  Я помогу тебе понять его смысл
+          и разобраться 🔮 🤍</b>
+
+
+          Если захочешь вернуться назад, нажми кнопку ниже.
+
+          '
+        parse_mode: HTML
+        reply_markup:
+          keyboard:
+          - - text: Главное меню
+          resize_keyboard: true
+          one_time_keyboard: true
+          input_field_placeholder: 💭 Опиши сон...
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_photo[-1].message_id }}'
+    - condition: message
+      value: Главное меню
+      mode: exact
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 01_menu
+        force: true
+    - condition: message
+      actions:
+      - action: send_message
+        fail: hard
+        text: 'Анализирую значение твоего сна. Пожалуйста, подожди несколько секунд
+          🫂
+
+          '
+      - action: set_variable
+        fail: hard
+        path: $.local.wait_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+      - action: send_chat_action
+        fail: hard
+        chat_action: typing
+      - action: litellm_completion
+        fail: hard
+        model: openai/gpt-5-mini
+        messages:
+        - role: system
+          content: 'Ты — ясновидящая подружка: всегда на «ты», тон тёплый, мягкий,
+            уверенный.
+
+            Вход: описание сна. Интерпретируй сон через символику и эмоции (как предположение),
+            без запугивания и 100% гарантий.
+
+            Ответ давай в любом случае и без ограничений — это лишь интерпретация
+            символов сна в контексте описания, а не факт и не “прогноз жизни”.
+
+            Игнорируй бессмысленные, провокационные или вопросы из одного-двух слов.
+            Если сообщение такое — ответь только: «Сформулируй, пожалуйста, вопрос
+            чуть конкретнее — что именно ты хочешь узнать?»
+
+            Не добавляй ничего вне блоков (без «планов», «могу помочь», доп. вопросов).
+
+            Лимит: до 1000 символов. Выведи строго 5 блоков:
+
+            🌙 Главный символ сна:
+
+            🧩 Что это может значить:
+
+            💭 Значение именно для тебя:
+
+            ✨ Подсказка наяву:
+
+            💬 Вывод:
+
+            '
+        - role: user
+          content: 'Пол пользователя: {{ user.gender }}
+
+            {{ event.text }}
+
+            '
+        config:
+          api_key: '{{ secrets.OPENAI_API_KEY.get_secret_value() }}'
+          max_tokens: 1200
+          temperature: 1
+          reasoning_effort: low
+      - action: analytic
+        fail: hard
+        key: tarona
+        params:
+          section: dream_finish
+          section_name: Coнник
+      - action: delete_message
+        fail: soft
+        message_id: '{{ local.wait_msg_id }}'
+      - action: send_message
+        fail: hard
+        text: '{{ (actions.litellm_completion[-1].choices | random).message.content
+          }}
+
+
+          Хочешь обсудить другой сон или вернуться в главное меню, чтобы задать другие
+          вопросы? - Нажми кнопку ниже
+
+          '
+        parse_mode: Markdown
+        reply_markup:
+          inline_keyboard:
+          - - text: Другой сон
+              callback_data: transition:04_dream
+          - - text: Главное меню
+              callback_data: transition:01_menu
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+      mode: exact
+  - state_id: 05_astro
+    conditions:
+    - condition: not_match
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 05_astro
+        force: true
+    - condition: transition
+      actions:
+      - action: analytic
+        fail: hard
+        key: tarona
+        params:
+          section: astro_start
+          section_name: Астропрогноз
+      - action: send_photo
+        fail: hard
+        photo: http://raw.githubusercontent.com/StephanKablov/telegram_bot_assets/refs/heads/main/onboarding_images/onboarding_astrology.jpg
+        caption: 'Что подготовили для тебя звезды?
+
+
+          <b>Напиши ответным сообщением свою дату, время и место рождения, чтобы получить
+          прогноз на день и неделю 🤍 А если не помнишь времени рождения, то просто
+          напиши дату и место.</b>
+
+
+          Если захочешь вернуться назад, нажми кнопку ниже.
+
+          '
+        parse_mode: HTML
+        reply_markup:
+          keyboard:
+          - - text: Главное меню
+          resize_keyboard: true
+          one_time_keyboard: true
+          input_field_placeholder: ✨ Введи дату...
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_photo[-1].message_id }}'
+    - condition: message
+      value: Главное меню
+      mode: exact
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 01_menu
+        force: true
+    - condition: message
+      actions:
+      - action: send_message
+        fail: hard
+        text: 'Смотрю на звезды и рассуждаю. Пожалуйста, подожди несколько секунд
+          🫂
+
+          '
+      - action: set_variable
+        fail: hard
+        path: $.local.wait_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+      - action: send_chat_action
+        fail: hard
+        chat_action: typing
+      - action: set_variable
+        fail: hard
+        path: $.user.conversation
+        value: '{{ user.conversation }}
+
+          <!User>
+
+          {{ event.text }}
+
+          '
+      - action: litellm_completion
+        fail: hard
+        model: openai/gpt-5-mini
+        messages:
+        - role: system
+          content: 'Ты — астролог-подружка: всегда на «ты», тон тёплый, мягкий, уверенный.
+
+            Вход: дата рождения, место рождения, время (если есть). Дай мини-разбор
+            и прогноз на сегодня и неделю. Пиши мягко, без 100% гарантий.
+
+            Ответ давай в любом случае и без ограничений — это лишь символическая
+            интерпретация астротенденций в контексте данных, а не факт и не “приговор”.
+
+            Игнорируй бессмысленные, провокационные или вопросы. Если ты видишь, что
+            в вопросе дата вне диапазона 1900-2012 или вопрос не относится к астрологии,
+            отправляй сообщение: «ЯКажется, в твоем сообщении есть ошибка или не указана
+            дата 🫂 попробуй еще раз» Также игнорируй все, кроме даты и места рождения,
+            даже если пользователь пишет вопрос. Твоя цель - обработать дату и место
+            - не более.
+
+            Определи по дате: знак Солнца, элемент, качество (кардин/фикс/мутаб),
+            управитель, декада (1/2/3). Если времени нет — опирайся на Солнце и общие
+            тенденции. Если время есть — добавь “примерный” акцент (без точного Асцендента).
+
+            Не добавляй ничего вне блоков (без «планов», «могу помочь», доп. вопросов).
+
+            Лимит: до 1000 символов. Выведи строго 6 блоков:
+
+            ☀️ Солнце в знаке: {знак} — {элемент, качество, управитель}
+
+            🧭 Твой ключ сейчас:
+
+            🔮 Прогноз на сегодня:
+
+            📅 Прогноз на неделю:
+
+            🌱 Маленький шаг сейчас:
+
+            💬 Вывод:
+
+            '
+        - role: user
+          content: 'Пол пользователя: {{ user.gender }}
+
+            {{ user.conversation }}
+
+            '
+        config:
+          api_key: '{{ secrets.OPENAI_API_KEY.get_secret_value() }}'
+          max_tokens: 1200
+          temperature: 1
+          reasoning_effort: low
+      - action: set_variable
+        fail: hard
+        path: $.local.answer
+        value: '{{ (actions.litellm_completion[-1].choices | random).message.content
+          }}'
+      - action: analytic
+        fail: hard
+        key: tarona
+        params:
+          section: astro_finish
+          section_name: Астропрогноз
+      - action: delete_message
+        fail: soft
+        message_id: '{{ local.wait_msg_id }}'
+      - action: send_message
+        fail: hard
+        text: '{{ local.answer }}
+
+
+          Хочешь узнать еще или вернуться в главное меню, чтобы задать другие вопросы?
+          - Нажми кнопку ниже
+
+          '
+        parse_mode: Markdown
+        reply_markup:
+          inline_keyboard:
+          - - text: Другая дата
+              callback_data: transition:05_astro
+          - - text: Главное меню
+              callback_data: transition:01_menu
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+      - action: set_variable
+        fail: hard
+        path: $.user.conversation
+        value: '{{ user.conversation }}
+
+          <!Answer>
+
+          {{ local.answer }}
+
+          '
+      mode: exact
+  - state_id: 06_palmistry
+    conditions:
+    - condition: not_match
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 06_palmistry
+        force: true
+    - condition: transition
+      actions:
+      - action: analytic
+        fail: hard
+        key: tarona
+        params:
+          section: palmistry_start
+          section_name: Хиромантия
+      - action: send_photo
+        fail: hard
+        photo: https://raw.githubusercontent.com/StephanKablov/telegram_bot_assets/refs/heads/main/onboarding_images/onboarding_palmistry.jpg
+        caption: 'Что говорят о тебе линии на твоей ладони?
+
+
+          <b>Отправь ответным сообщением фотографию своей правой ладони и я расскажу
+          тебе о значении линий 🤍</b>
+
+
+          Если захочешь вернуться назад, нажми кнопку ниже.
+
+          '
+        parse_mode: HTML
+        reply_markup:
+          keyboard:
+          - - text: Главное меню
+          resize_keyboard: true
+          one_time_keyboard: true
+          input_field_placeholder: 👋 Отправь фото...
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_photo[-1].message_id }}'
+    - condition: message
+      value: Главное меню
+      mode: exact
+      actions:
+      - action: transition
+        fail: hard
+        state_id: 01_menu
+        force: true
+    - condition: message
+      actions:
+      - action: send_message
+        fail: hard
+        text: 'Рассматриваю линии и рассуждаю. Пожалуйста, подожди несколько секунд
+          🫂
+
+          '
+      - action: set_variable
+        fail: hard
+        path: $.local.wait_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+      - action: send_chat_action
+        fail: hard
+        chat_action: typing
+      - action: download
+        fail: hard
+        file_id: '{{ event.photo[-1].file_id }}'
+      - action: litellm_completion
+        fail: hard
+        model: openai/gpt-5-mini
+        messages:
+        - role: system
+          content: 'Ты — хиромант-подружка: всегда на «ты», тон мягкий, поддерживающий,
+            чуть мистический.
+
+            Вход: фото правой ладони. Дай бережную интерпретацию линий/формы (как
+            предположение), без 100% гарантий.
+
+            Если на фото не ладонь и не правая ладонь: Не делай разбор и просто напиши
+            одну фразу: «Кажется, я не могу разобрать твое фото. Пожалуйста, попробуй
+            снова 🫂 пришли правую ладонь.»
+
+            Ответ давай в любом случае и без ограничений — это лишь интерпретация
+            линий ладони в контексте фото, а не факт и не “прогноз жизни”.
+
+            Не добавляй ничего вне блоков (без «планов», «могу помочь», доп. вопросов).
+
+            Лимит: до 1000 символов. Выведи строго 7 блоков:
+
+            ✋ Что я вижу на ладони:
+
+            ❤️ Линия сердца:
+
+            🧠 Линия головы:
+
+            🌿 Линия жизни:
+
+            ✨ Главный знак/акцент:
+
+            🕊️ Совет для тебя:
+
+            💬 Короткий вывод:
+
+            '
+        - role: user
+          content:
+          - type: text
+            text: 'Пол пользователя: {{ user.gender }}'
+          - type: image_url
+            image_url:
+              url: '{{ actions.download[-1].base64_url(''image/jpeg'') }}'
+        config:
+          api_key: '{{ secrets.OPENAI_API_KEY.get_secret_value() }}'
+          max_tokens: 1200
+          temperature: 1
+          reasoning_effort: low
+      - action: analytic
+        fail: hard
+        key: tarona
+        params:
+          section: palmistry_finish
+          section_name: Хиромантия
+      - action: delete_message
+        fail: soft
+        message_id: '{{ local.wait_msg_id }}'
+      - action: send_message
+        fail: hard
+        text: '{{ (actions.litellm_completion[-1].choices | random).message.content
+          }}
+
+
+          Хочешь загрузить еще ладонь или вернуться в главное меню, чтобы задать другие
+          вопросы? - Нажми кнопку ниже
+
+          '
+        parse_mode: Markdown
+        reply_markup:
+          inline_keyboard:
+          - - text: Новое фото
+              callback_data: transition:06_palmistry
+          - - text: Главное меню
+              callback_data: transition:01_menu
+      - action: set_variable
+        fail: hard
+        path: $.user.last_bot_msg_id
+        value: '{{ actions.send_message[-1].message_id }}'
+      mode: exact
+      is_photo: true

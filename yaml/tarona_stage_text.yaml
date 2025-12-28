@@ -1,0 +1,14 @@
+scenario:
+  id: onboarding
+  initial_state_id: 00_lock
+  conditions:
+  - condition: message
+    actions:
+    - action: send_message
+      fail: hard
+      text: Хочешь пообщаться с Тароной? 🔮 Она ждет тебя в боте @tarona_taro_bot
+    value: /start
+    mode: exact
+  states:
+  - state_id: 00_lock
+    conditions: []
